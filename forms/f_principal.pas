@@ -11,34 +11,43 @@ uses
   FireDAC.DApt.Intf, FireDAC.DApt, Data.DB, FireDAC.Comp.DataSet,
   FireDAC.Comp.Client, FireDAC.Phys.FBDef, FireDAC.Phys.IBBase, FireDAC.Phys.FB,
   IBX.IBQuery, Vcl.Grids, Vcl.DBGrids, IBX.IBCustomDataSet, IBX.IBTable,
-  IBX.IBDatabase, IBX.IBEvents;
+  IBX.IBDatabase, IBX.IBEvents, DateUtils;
 
 type
   Tfrm_principal = class(TForm)
     pnlClient: TPanel;
-    btn_fechamento: TButton;
-    edt_nome: TEdit;
-    tbClientes: TIBTable;
-    tbClientesID: TIntegerField;
-    tbClientesNOME: TIBStringField;
-    tbClientesENDERECO: TIBStringField;
-    dsClientes: TDataSource;
+    dsDATMOV: TDataSource;
     DBGrid1: TDBGrid;
     qBusca: TIBQuery;
-    qGrava: TIBQuery;
     IBEvents1: TIBEvents;
     ibConexao: TIBDatabase;
     ibTransacao: TIBTransaction;
-    Label1: TLabel;
     pnlBottom: TPanel;
-    btn_concluir: TButton;
     btn_sair: TButton;
-    procedure btn_fechamentoClick(Sender: TObject);
+    qAtualiza: TIBQuery;
+    btn_iniciar_fechamento: TButton;
+    btn_atualizar: TButton;
+    qDATMOV: TIBQuery;
+    qDATMOVDATA: TDateField;
+    qDATMOVFECHOU: TIBStringField;
+    qDATMOVFECHAMENTO_INICIADO: TIBStringField;
+    btn_concluir: TButton;
+    edt_usuario: TEdit;
+    edt_terminal: TEdit;
+    qDATMOVFECHAMENTO_USUARIO: TIBStringField;
+    qDATMOVFECHAMENTO_TERMINAL: TIBStringField;
+    qDATMOVFECHAMENTO_HORA: TTimeField;
     procedure btn_sairClick(Sender: TObject);
     procedure IBEvents1EventAlert(Sender: TObject; EventName: string;
       EventCount: Integer; var CancelAlerts: Boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure btn_iniciar_fechamentoClick(Sender: TObject);
+    procedure btn_atualizarClick(Sender: TObject);
+    procedure btn_concluirClick(Sender: TObject);
+    procedure edt_usuarioExit(Sender: TObject);
+
+
   private
     { Private declarations }
   public
@@ -48,63 +57,59 @@ type
 var
   frm_principal: Tfrm_principal;
 
+  wusuario_logado: string;
+  wincluir: boolean;
+
+
 implementation
 
 {$R *.dfm}
 
-procedure Tfrm_principal.btn_fechamentoClick(Sender: TObject);
-var
-  Lcontador: Integer;
-  Lnome: String;
+procedure Tfrm_principal.btn_iniciar_fechamentoClick(Sender: TObject);
 begin
-  if edt_nome.Text = '' then
-  begin
-    Application.MessageBox('Nada foi informado!',
-                'Aviso',
-                Mb_IconInformation + Mb_Ok);
+    try
+      if not ibTransacao.Active then
+        ibTransacao.Active := True;
 
-    exit;
-  end;
+      qAtualiza.Close;
+      qAtualiza.SQL.Clear;
+      qAtualiza.SQL.Add('UPDATE DATMOV ');
+      qAtualiza.SQL.Add('SET FECHAMENTO_INICIADO = :pFECHAMENTO_INICIADO, ');
+      qAtualiza.SQL.Add(' FECHAMENTO_USUARIO  = :pFECHAMENTO_USUARIO, ');
+      qAtualiza.SQL.Add(' FECHAMENTO_TERMINAL = :pFECHAMENTO_TERMINAL, ');
+      qAtualiza.SQL.Add(' FECHAMENTO_HORA = :pFECHAMENTO_HORA ');
+      qAtualiza.SQL.Add('WHERE DATA = :pDATA ');
+      qAtualiza.SQL.Add('AND FECHOU = ''N'' ');
+      qAtualiza.SQL.Add('AND FECHAMENTO_INICIADO IS NULL');
+      qAtualiza.ParamByName('pFECHAMENTO_INICIADO').AsString := 'S';
+      qAtualiza.ParamByName('pFECHAMENTO_USUARIO').AsString := edt_usuario.Text;
+      qAtualiza.ParamByName('pFECHAMENTO_TERMINAL').AsString := edt_terminal.Text;
+      qAtualiza.ParamByName('pFECHAMENTO_HORA').AsTime :=  HourOf(Now);
+      qAtualiza.ParamByName('pDATA').Value := qDATMOV.FieldByName('DATA').Value;
+      qAtualiza.ExecSQL;
 
+      ibTransacao.Commit;
 
+      wincluir := true;
 
-  qBusca.SQL.Clear;
-  qBusca.Close;
-  qBusca.SQL.Add('select MAX(ID) AS ID FROM TB_CLIENTES ');
-  qBusca.Open;
-  if qBusca.FieldByName('ID').AsInteger >= 1 then
-    Lcontador := qBusca.FieldByName('ID').AsInteger + 1
-  else
-    Lcontador := 1;
-
-  Lnome := edt_nome.Text;
-
-  try
-    ibTransacao.Active := false;
-    ibTransacao.Active := true;
-
-    qGrava.Close;
-    qGrava.SQL.Clear;
-    qGrava.SQL.Add('insert into tb_clientes(id, nome) ');
-    qGrava.SQL.Add('values (:PId, :PNome) ');
-    qGrava.ParamByName('PId').AsInteger := Lcontador;
-    qGrava.ParamByName('PNome').AsString := edt_nome.Text;
-    qGrava.ExecSQL;
-
-    ibTransacao.Commit;
-    ibTransacao.Active := false;
+      qDATMOV.Close;
+      qDATMOV.Open;
 
 
-    Application.MessageBox('Um novo registro foi inserido!',
-                'Aviso',
-                Mb_IconInformation + Mb_Ok  );
+     if wusuario_logado <> 'a' then
+     begin
+        Application.MessageBox('Não é possível continuar!' +#10+
+                    'Finalize o fechamento.' ,'Aviso',Mb_IconInformation + Mb_Ok  );
 
-  except
-    Application.MessageBox('Erro ao gravar',
-                'Erro',
-                Mb_IconInformation + Mb_Ok );
+         Application.Terminate;
+     end;
 
-  end;
+    except
+      Application.MessageBox('Erro ao iniciar fechamento!',
+                  'Erro',
+                  Mb_IconInformation + Mb_Ok );
+
+    end;
 
 end;
 
@@ -113,9 +118,98 @@ begin
   Application.Terminate;
 end;
 
+procedure Tfrm_principal.edt_usuarioExit(Sender: TObject);
+begin
+
+
+  if edt_usuario.Text <> '' then
+    wusuario_logado := edt_usuario.Text
+  else
+  begin
+    Application.MessageBox('Usuário não foi informado.',
+                'Aviso',
+                Mb_IconInformation + Mb_Ok  );
+    edt_usuario.SetFocus;
+  end;
+end;
+
+procedure Tfrm_principal.btn_concluirClick(Sender: TObject);
+begin
+    try
+      if not ibTransacao.Active then
+        ibTransacao.Active := True;
+
+      qAtualiza.Close;
+      qAtualiza.SQL.Clear;
+      qAtualiza.SQL.Add('UPDATE DATMOV ');
+      qAtualiza.SQL.Add('SET FECHAMENTO_INICIADO = :pFECHAMENTO_INICIADO, ');
+      qAtualiza.SQL.Add(' FECHAMENTO_USUARIO  = :pFECHAMENTO_USUARIO, ');
+      qAtualiza.SQL.Add(' FECHAMENTO_TERMINAL = :pFECHAMENTO_TERMINAL, ');
+      qAtualiza.SQL.Add(' FECHAMENTO_HORA = :pFECHAMENTO_HORA ');
+      qAtualiza.SQL.Add('WHERE DATA = :pDATA ');
+      qAtualiza.SQL.Add('AND FECHOU = ''N'' ');
+      qAtualiza.SQL.Add('AND FECHAMENTO_INICIADO IS NOT NULL');
+      qAtualiza.ParamByName('pFECHAMENTO_INICIADO').Value := Null;
+      qAtualiza.ParamByName('pFECHAMENTO_USUARIO').Value := Null;
+      qAtualiza.ParamByName('pFECHAMENTO_TERMINAL').Value := Null;
+      qAtualiza.ParamByName('pFECHAMENTO_HORA').Value := Null;
+      qAtualiza.ParamByName('pDATA').Value := qDATMOV.FieldByName('DATA').Value;
+      qAtualiza.ExecSQL;
+
+      ibTransacao.Commit;
+
+      wincluir := false;
+
+      qDATMOV.Close;
+      qDATMOV.Open;
+
+    except
+      Application.MessageBox('Erro ao tentar atualizar o campo Fechamento_Iniciado!',
+                  'Erro',
+                  Mb_IconInformation + Mb_Ok );
+
+    end;
+
+end;
+
+procedure Tfrm_principal.btn_atualizarClick(Sender: TObject);
+begin
+  qDATMOV.Close;
+  qDATMOV.Open;
+end;
+
 procedure Tfrm_principal.FormCreate(Sender: TObject);
 begin
-  tbClientes.Active := True;
+  qDATMOV.Active := True;
+
+{
+  #@
+  Aqui pDATA é apenas para fins de teste.
+  Em produção, Iniciar Fechamento sempre vai ser na data atual?
+  Definir se vai ser permitido Iniciar Fechamento hoje(data atual) referente a 5 dias atrás?
+
+  A select abaixo faz uma validação para não permitir abrir o sistema caso um fechamento
+  ainda não tenha sido finalizado.
+  Nessa select tbm é necessário filtrar FECHOU= 'N' ?
+}
+
+  qBusca.SQL.Clear;
+  qBusca.Close;
+  qBusca.SQL.Add('select DATA, FECHOU, FECHAMENTO_INICIADO FROM DATMOV ');
+  qBusca.SQL.Add('where DATA = :pDATA ');
+  qBusca.ParamByName('pDATA').Value := qDATMOV.FieldByName('DATA').Value;
+  qBusca.Open;
+
+  qBusca.First;
+  if qBusca.FieldByName('FECHAMENTO_INICIADO').AsString = 'S' then
+  begin
+    //verificar terminal e usuário
+    Application.MessageBox('Não é possível conectar!' +#10+
+                'Finalize o fechamento.' ,'Aviso',Mb_IconInformation + Mb_Ok  );
+
+    Application.Terminate;
+
+  end;
 
   IBEvents1.RegisterEvents;
 end;
@@ -130,7 +224,7 @@ begin
     if IBEvents1.Registered then
       IBEvents1.UnRegisterEvents;
 
-    tbClientes.Active := False;
+    qDATMOV.Active := False;
 
     ibConexao.Close;
   end;
@@ -139,12 +233,61 @@ end;
 procedure Tfrm_principal.IBEvents1EventAlert(Sender: TObject; EventName: string;
   EventCount: Integer; var CancelAlerts: Boolean);
 begin
-  showmessage('Recebi o evento: ' + EventName);
+  qDATMOV.Close;
+  qDATMOV.Open;
 
-  tbClientes.Close;
-  tbClientes.Open;
+  { #@
+    no teste inicial feito sexta feira, a aplicação secundária não teve os dados atualizados,
+    analisar esse fato.
 
-  edt_nome.Clear;
+  }
+
+  //showmessage('Recebi o evento: ' + EventName);
+
+
+  { if wincluir foi necessário para tratar erro que era gerado ao comparar
+    edt_usuario (que tem valor = a) com o campo fechamento_usuario (que tem valor null) }
+
+  if wincluir then
+  begin
+    if edt_usuario.Text = qDATMOV.FieldByName('FECHAMENTO_USUARIO').AsString then
+    begin
+
+      showmessage('Evento Recebito. '+#10+
+      'Usuário: ' + qDATMOV.FieldByName('FECHAMENTO_USUARIO').AsString);
+
+      {
+      Application.MessageBox('Não é possível continuar!' +#10+
+                  'Fechamento em aberto.' ,'Aviso',Mb_IconInformation + Mb_Ok  );
+
+      Application.Terminate;
+      }
+
+    end
+    else
+    begin
+      Application.MessageBox('Não é possível continuar!' +#10+
+                  'Fechamento em aberto.' ,'Aviso',Mb_IconInformation + Mb_Ok  );
+
+      Application.Terminate;
+
+    end;
+
+
+  end;
+
+
+
+
+  //Consultar a tabela datmov e verificar se o usuario e o terminal = editterminal e edtusuario.
+
+  //se for igual  não mostra mensagem nenhuma.
+  //senão mostra
+
+  //Application.MessageBox('Fechamento iniciado!', 'Aviso', Mb_IconInformation + Mb_Ok  );
+  //mostrar na mensagem = usuário,terminal,hora
+
+
 
 end;
 

@@ -22,44 +22,14 @@ object frm_principal: Tfrm_principal
     Height = 511
     Align = alClient
     TabOrder = 0
-    ExplicitHeight = 489
-    object Label1: TLabel
-      Left = 32
-      Top = 36
-      Width = 60
-      Height = 16
-      Caption = 'Digite aqui'
-      Font.Charset = DEFAULT_CHARSET
-      Font.Color = clWindowText
-      Font.Height = -13
-      Font.Name = 'Tahoma'
-      Font.Style = []
-      ParentFont = False
-    end
-    object btn_fechamento: TButton
-      Left = 196
-      Top = 36
-      Width = 150
-      Height = 45
-      Caption = 'Iniciar Fechamento'
-      TabOrder = 1
-      OnClick = btn_fechamentoClick
-    end
-    object edt_nome: TEdit
-      Left = 32
-      Top = 60
-      Width = 121
-      Height = 21
-      TabOrder = 0
-    end
     object DBGrid1: TDBGrid
       Left = 0
-      Top = 96
+      Top = 95
       Width = 583
-      Height = 321
-      DataSource = dsClientes
+      Height = 329
+      DataSource = dsDATMOV
       Options = [dgEditing, dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgCancelOnExit, dgTitleClick, dgTitleHotTrack]
-      TabOrder = 2
+      TabOrder = 3
       TitleFont.Charset = DEFAULT_CHARSET
       TitleFont.Color = clWindowText
       TitleFont.Height = -11
@@ -73,7 +43,7 @@ object frm_principal: Tfrm_principal
       Height = 70
       Align = alBottom
       BevelOuter = bvNone
-      TabOrder = 3
+      TabOrder = 4
       object btn_sair: TButton
         Left = 399
         Top = 9
@@ -83,98 +53,57 @@ object frm_principal: Tfrm_principal
         TabOrder = 0
         OnClick = btn_sairClick
       end
+      object btn_atualizar: TButton
+        Left = 264
+        Top = 9
+        Width = 117
+        Height = 25
+        Caption = 'Atualizar Grid'
+        TabOrder = 1
+        OnClick = btn_atualizarClick
+      end
+    end
+    object btn_iniciar_fechamento: TButton
+      Left = 219
+      Top = 3
+      Width = 150
+      Height = 40
+      Caption = 'Iniciar Fechamento'
+      TabOrder = 1
+      OnClick = btn_iniciar_fechamentoClick
     end
     object btn_concluir: TButton
-      Left = 376
-      Top = 36
+      Left = 400
+      Top = 3
       Width = 150
-      Height = 45
+      Height = 40
       Caption = 'Concluir Fechamento'
-      TabOrder = 4
-      OnClick = btn_sairClick
+      TabOrder = 2
+      OnClick = btn_concluirClick
+    end
+    object edt_usuario: TEdit
+      Left = 15
+      Top = 12
+      Width = 74
+      Height = 21
+      TabOrder = 0
+      Text = 'a'
+      OnExit = edt_usuarioExit
+    end
+    object edt_terminal: TEdit
+      Left = 15
+      Top = 49
+      Width = 74
+      Height = 21
+      TabOrder = 5
+      Text = '10'
+      OnExit = edt_usuarioExit
     end
   end
-  object tbClientes: TIBTable
-    Database = ibConexao
-    Transaction = ibTransacao
-    BufferChunks = 1000
-    CachedUpdates = False
-    FieldDefs = <
-      item
-        Name = 'ID'
-        Attributes = [faRequired]
-        DataType = ftInteger
-      end
-      item
-        Name = 'NOME'
-        Attributes = [faRequired]
-        DataType = ftWideString
-        Size = 55
-      end
-      item
-        Name = 'ENDERECO'
-        DataType = ftWideString
-        Size = 55
-      end
-      item
-        Name = 'BAIRRO'
-        DataType = ftWideString
-        Size = 25
-      end
-      item
-        Name = 'CEP'
-        DataType = ftWideString
-        Size = 9
-      end
-      item
-        Name = 'CIDADE'
-        DataType = ftWideString
-        Size = 30
-      end
-      item
-        Name = 'ESTADO'
-        DataType = ftWideString
-        Size = 2
-      end
-      item
-        Name = 'FONE1'
-        DataType = ftWideString
-        Size = 15
-      end
-      item
-        Name = 'EMAIL'
-        DataType = ftWideString
-        Size = 60
-      end>
-    IndexDefs = <
-      item
-        Name = 'PK_TB_CLIENTES'
-        Fields = 'ID'
-        Options = [ixUnique]
-      end>
-    StoreDefs = True
-    TableName = 'TB_CLIENTES'
-    UniDirectional = False
-    Left = 96
-    Top = 120
-    object tbClientesID: TIntegerField
-      FieldName = 'ID'
-      Required = True
-    end
-    object tbClientesNOME: TIBStringField
-      FieldName = 'NOME'
-      Required = True
-      Size = 55
-    end
-    object tbClientesENDERECO: TIBStringField
-      FieldName = 'ENDERECO'
-      Size = 55
-    end
-  end
-  object dsClientes: TDataSource
-    DataSet = tbClientes
-    Left = 37
-    Top = 117
+  object dsDATMOV: TDataSource
+    DataSet = qDATMOV
+    Left = 69
+    Top = 125
   end
   object qBusca: TIBQuery
     Database = ibConexao
@@ -182,22 +111,14 @@ object frm_principal: Tfrm_principal
     BufferChunks = 1000
     CachedUpdates = False
     ParamCheck = True
-    Left = 504
+    Left = 448
     Top = 256
-  end
-  object qGrava: TIBQuery
-    Database = ibConexao
-    Transaction = ibTransacao
-    BufferChunks = 1000
-    CachedUpdates = False
-    ParamCheck = True
-    Left = 504
-    Top = 320
   end
   object IBEvents1: TIBEvents
     AutoRegister = False
     Database = ibConexao
     Events.Strings = (
+      'FECHAMENTO_INICIADO'
       'NEW_PUSH'
       'NOVO_EVENTO')
     Registered = False
@@ -207,7 +128,7 @@ object frm_principal: Tfrm_principal
   end
   object ibConexao: TIBDatabase
     Connected = True
-    DatabaseName = 'C:\database\ODC_TESTE.FDB'
+    DatabaseName = 'C:\Unisoft\Dados\ABAETE_CONTRATOS.FDB'
     Params.Strings = (
       'user_name=sysdba'
       'password=masterkey'
@@ -222,5 +143,63 @@ object frm_principal: Tfrm_principal
     DefaultDatabase = ibConexao
     Left = 456
     Top = 192
+  end
+  object qAtualiza: TIBQuery
+    Database = ibConexao
+    Transaction = ibTransacao
+    BufferChunks = 1000
+    CachedUpdates = False
+    ParamCheck = True
+    Left = 504
+    Top = 256
+  end
+  object qDATMOV: TIBQuery
+    Database = ibConexao
+    Transaction = ibTransacao
+    Active = True
+    BufferChunks = 1000
+    CachedUpdates = False
+    ParamCheck = True
+    SQL.Strings = (
+      
+        'select DATA, FECHOU, FECHAMENTO_INICIADO, FECHAMENTO_USUARIO, FE' +
+        'CHAMENTO_TERMINAL, FECHAMENTO_HORA from DATMOV where FECHOU = '#39'N' +
+        #39)
+    Left = 136
+    Top = 128
+    object qDATMOVDATA: TDateField
+      FieldName = 'DATA'
+      Origin = 'DATMOV.DATA'
+      ProviderFlags = [pfInUpdate, pfInWhere, pfInKey]
+      Required = True
+    end
+    object qDATMOVFECHOU: TIBStringField
+      FieldName = 'FECHOU'
+      Origin = 'DATMOV.FECHOU'
+      Size = 1
+    end
+    object qDATMOVFECHAMENTO_INICIADO: TIBStringField
+      DisplayLabel = 'INICIADO'
+      FieldName = 'FECHAMENTO_INICIADO'
+      Origin = 'DATMOV.FECHAMENTO_INICIADO'
+      FixedChar = True
+      Size = 1
+    end
+    object qDATMOVFECHAMENTO_USUARIO: TIBStringField
+      DisplayLabel = 'USUARIO'
+      FieldName = 'FECHAMENTO_USUARIO'
+      Origin = 'DATMOV.FECHAMENTO_USUARIO'
+    end
+    object qDATMOVFECHAMENTO_TERMINAL: TIBStringField
+      DisplayLabel = 'TERMINAL'
+      FieldName = 'FECHAMENTO_TERMINAL'
+      Origin = 'DATMOV.FECHAMENTO_TERMINAL'
+      Size = 3
+    end
+    object qDATMOVFECHAMENTO_HORA: TTimeField
+      DisplayLabel = 'HORA'
+      FieldName = 'FECHAMENTO_HORA'
+      Origin = 'DATMOV.FECHAMENTO_HORA'
+    end
   end
 end
